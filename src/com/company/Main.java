@@ -1,5 +1,8 @@
 package com.company;
 
+//internal message order: the user who sent it, their display name, the message, and the current time.
+//external message order: the message, the user who sent it, their display name, and the current time.
+
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -19,27 +22,30 @@ public class Main extends HttpServlet {
     // ArrayList<String> passwords = new ArrayList<String>();
 //    String[] usernames = {"felix"};
 //    String[] passwords = {"master"};
-
     Map<String, String> users = Collections.singletonMap("felix", "master");
+
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         int desiredmessageamount = 30;
+        int bell = 07;
         PrintWriter out = response.getWriter();
-        messages.add(new Message("me", "hello", "yesterday"));
+        //messages.add(new Message("me", "helloooooo", "yesterday"));
         try {
             String user = request.getParameter("user");
             String pass = request.getParameter("pass");
             if (ips.contains(request.getRemoteAddr())) {
-                out.print("o o o ");
+                out.print("o" + (char)bell + "o " + (char)bell + "o" + (char)bell + "o" + (char)bell);
                 for (int i = messages.size() - Math.min(messages.size(), desiredmessageamount); i < messages.size(); i++) {
 
                     out.print(messages.get(i).getMessage());
-                    out.print(" ");
+                    out.print((char)bell);
                     out.print(messages.get(i).getSender());
-                    out.print(" ");
+                    out.print((char)bell);
+                    out.print(messages.get(i).getSenderDisplayName());
+                    out.print((char)bell);
                     out.print(messages.get(i).getTimestamp());
-                    out.print(" ");
+                    out.print((char)bell);
 
 
                 }
@@ -76,14 +82,15 @@ public class Main extends HttpServlet {
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) {
         
-            messages.add(new Message(request.getParameter("user"), request.getParameter("message"), getCurrentTimeStamp()));
+            messages.add(new Message(request.getParameter("user"), request.getParameter("displayname"), request.getParameter("message"), getCurrentTimeStamp()));
 
+            System.out.println((int)request.getParameter("message").getBytes()[0]);
 
     }
 
 
     public static String getCurrentTimeStamp() {
-        SimpleDateFormat sdfDate = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss");//dd/MM/yyyy
+        SimpleDateFormat sdfDate = new SimpleDateFormat("MM-dd-yyyy/HH:mm:ss");//dd/MM/yyyy
         Date now = new Date();
         String strDate = sdfDate.format(now);
         return strDate;
@@ -95,7 +102,11 @@ public class Main extends HttpServlet {
         private String sender;
         private String message;
         private String timestamp;
+        private String senderDisplayName;
 
+        public String getSenderDisplayName() {return senderDisplayName;}
+
+        public void setSenderDisplayName(String senderDisplayName) {this.senderDisplayName = senderDisplayName;}
 
         public String getSender() {
             return sender;
@@ -122,11 +133,11 @@ public class Main extends HttpServlet {
         }
 
 
-        public Message(String sender, String message, String timestamp) {
+        public Message(String sender, String senderDisplayName, String message, String timestamp) {
             this.sender = sender;
             this.message = message;
             this.timestamp = timestamp;
-
+            this.senderDisplayName = senderDisplayName;
 
         }
 
