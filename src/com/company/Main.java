@@ -6,87 +6,61 @@ package com.company;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
 
-public class Main extends HttpServlet {
 
-    ArrayList<Message> messages = new ArrayList<Message>();
+public class Main {
+
+    static ArrayList<Message> messages = new ArrayList<Message>();
     ArrayList<String> ips = new ArrayList<String>();
+    static ArrayList<ChatThread> threads = new ArrayList<ChatThread>();
+    static int desiredmessageamount = 30;
     //  ArrayList<String> usernames = new ArrayList<String>();
     // ArrayList<String> passwords = new ArrayList<String>();
 //    String[] usernames = {"felix"};
 //    String[] passwords = {"master"};
     Map<String, String> users = Collections.singletonMap("felix", "master");
 
+    public static void main(String[] args) throws Exception{
+        ServerSocket ss;
+        Socket clientSocket;
 
-    @Override
-    public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        int desiredmessageamount = 30;
-        int bell = 07;
-        PrintWriter out = response.getWriter();
-        //messages.add(new Message("me", "helloooooo", "yesterday"));
-        try {
-            String user = request.getParameter("user");
-            String pass = request.getParameter("pass");
-            if (ips.contains(request.getRemoteAddr())) {
-                out.print("o" + (char)bell + "o " + (char)bell + "o" + (char)bell + "o" + (char)bell);
-                for (int i = messages.size() - Math.min(messages.size(), desiredmessageamount); i < messages.size(); i++) {
 
-                    out.print(messages.get(i).getMessage());
-                    out.print((char)bell);
-                    out.print(messages.get(i).getSender());
-                    out.print((char)bell);
-                    out.print(messages.get(i).getSenderDisplayName());
-                    out.print((char)bell);
-                    out.print(messages.get(i).getTimestamp());
-                    out.print((char)bell);
+        ss = new ServerSocket(44555);
+        while (true) {
+            clientSocket = ss.accept();
+            System.out.println("recieved");
+            ChatThread chatThread = new ChatThread(clientSocket);
+            threads.add(chatThread);
+            chatThread.start();
 
+
+
+            Iterator<ChatThread> cleaner = threads.iterator();
+            while (cleaner.hasNext()){
+                ChatThread thread = cleaner.next();
+                if(!thread.isAlive()){
+                    cleaner.remove();
 
                 }
 
-            } else if (pass != null && pass.equals(users.get(user))) {
-
-             /*   if(Arrays.asList(usernames).contains(user) && Arrays.asList(passwords).contains(pass)){
-                    out.print("adding ip...");
-                    if(passwords[Arrays.asList(usernames).indexOf(user)].equals(pass)){//if they aren't on the list of ips
-                    }
-                }*/
-
-                ips.add(request.getRemoteAddr());
-                out.print("ip added");
-            } else {
-                out.print("wrong pass");
-                out.print(request.getRemoteAddr());
             }
 
-            /*else if(usernames.contains(request.getParameter("user")) && passwords.contains(request.getParameter("pass"))){
-                if(passwords.get(usernames.indexOf(request.getParameter("user"))) == request.getParameter("pass")){//if they aren't on the list of ips
-                    ips.add(request.getRemoteAddr());
-                }
-
-            }*/
-
-
-        } finally {
-            out.close();
         }
 
-    }
 
-    @Override
-    public void doPost(HttpServletRequest request, HttpServletResponse response) {
-        
-            messages.add(new Message(request.getParameter("user"), request.getParameter("displayname"), request.getParameter("message"), getCurrentTimeStamp()));
 
-            System.out.println((int)request.getParameter("message").getBytes()[0]);
 
     }
+
+
 
 
     public static String getCurrentTimeStamp() {
@@ -143,5 +117,67 @@ public class Main extends HttpServlet {
 
 
     }
+    private static class ChatThread extends Thread{
+        Socket clientSocket;
+        PrintWriter out;
+        ChatThread(Socket cs){
+            clientSocket = cs;
+            try {
+                out = new PrintWriter(clientSocket.getOutputStream(), true);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
+
+
+        @Override
+        public void run() {
+            try {
+                super.run();
+                String line;
+
+                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+
+                for (int i = messages.size() - Math.min(messages.size(), desiredmessageamount); i < messages.size(); i++) {
+                    this.deliver(messages.get(i));
+                }
+
+
+                while((line = in.readLine()) != null){
+
+                    Message msg = new Message(line.split("\u0007")[0],line.split("\u0007")[1],line.split("\u0007")[2],getCurrentTimeStamp());
+
+                    System.out.println("recieved");
+                    messages.add(msg);
+
+
+
+
+                    for(ChatThread chatThread : threads){
+                        this.deliver(msg);
+
+                    }
+                }
+
+
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        public void deliver(Message message){
+            out.print(message.message);
+            out.print("\u0007");
+            out.print(message.sender);
+            out.print("\u0007");
+            out.print(message.senderDisplayName);
+            out.print("\u0007");
+            out.print(message.timestamp);
+            out.print("\u0007");
+            out.flush();
+
+
+        }
+    }
 }
